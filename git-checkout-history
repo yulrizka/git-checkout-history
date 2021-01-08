@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+[[ -n $DEBUG ]] && set -x
+
+set -eou pipefail
+IFS=$'\n\t'
+
+SELF_CMD="$0"
+
+HISTORY_LIMIT="10"
+
+list_checkouts() {
+	# get checkout from history
+	local branches
+	branches=$(cut -f2- $(git rev-parse --git-dir)/logs/HEAD | tac | awk '$1=="checkout:" { print $NF }' | awk '!seen[$1]++ {print $NF}')
+	
+	# filter only valid branch
+	local valid_branch
+	valid_branch=$(echo "$branches" | grep -f <(git branch -a | sed 's/^  //; s/^* //; s/^remotes\///; s/\(.*\) -> .*/\1/;'))
+	
+	# format output with column
+	local output
+	echo "$(echo "$valid_branch" | while read line ; do git log --format="$line	(%s)" $line -1; done)" | column -t -s '	'
+}
+
+choose_branch_interactive() {
+  local choice
+  choice="$(FZF_DEFAULT_COMMAND="${SELF_CMD}" \
+    fzf --ansi --no-preview || true)"
+  if [[ -z "${choice}" ]]; then
+    echo 2>&1 "error: you did not choose any of the options"
+    exit 1
+  else
+    git checkout $(echo "${choice}" | awk '{print $1}')
+  fi
+}
+
+main() {
+  if [[ "$#" -eq 0 ]]; then
+    if [[ -t 1 && "$(type fzf &>/dev/null; echo $?)" -eq 0 ]]; then
+      choose_branch_interactive
+    else
+      list_checkouts
+    fi
+  fi
+}
+
+main "$@"
