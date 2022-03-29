@@ -16,7 +16,7 @@ list_checkouts() {
 	
 	# filter only valid branch
 	local valid_branch
-	valid_branch=$(echo "$branches" | grep -f <(git branch -a | sed 's/^  //; s/^* //; s/^remotes\///; s/\(.*\) -> .*/\1/;'))
+	valid_branch=$(echo "$branches" | grep --max-count $HISTORY_LIMIT -f <(git branch -a | sed 's/^  //; s/^* //; s/^remotes\///; s/\(.*\) -> .*/\1/;'))
 	
 	# format output with column
 	local output
